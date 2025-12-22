@@ -24,8 +24,10 @@ jobs:
       - name: Build & Push
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./packages/twenty-docker/twenty
+          file: ./packages/twenty-docker/twenty/Dockerfile
           push: true
           platforms: linux/amd64
           tags: |
             izzidocker/phantomlabs:${{ github.ref_name }}
+
