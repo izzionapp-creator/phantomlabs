@@ -6033,8 +6033,8 @@ msgstr "Quarta-feira"
 
 #. js-lingui-id: TVkCrJ
 #: src/engine/core-modules/email-verification/services/email-verification.service.ts
-msgid "Welcome to Phantom: Please Confirm Your Email"
-msgstr "Bem-vindo ao Phantom: Por favor, confirme seu e-mail"
+msgid "Welcome to Twenty: Please Confirm Your Email"
+msgstr ""
 
 #. js-lingui-id: bLt/0J
 #: src/modules/workflow/common/standard-objects/workflow.workspace-entity.ts
