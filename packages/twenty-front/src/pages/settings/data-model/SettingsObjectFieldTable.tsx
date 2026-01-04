@@ -1,4 +1,4 @@
-import { useUpdateOneFieldMetadataItem } from '@/object-metadata/hooks/useUpdateOneFieldMetadataItem';
+import { useRefreshObjectMetadataItems } from '@/object-metadata/hooks/useRefreshObjectMetadataItems';
 import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import {
   SettingsObjectFieldItemTableRow,
@@ -16,15 +16,18 @@ import { Table } from '@/ui/layout/table/components/Table';
 import { TableHeader } from '@/ui/layout/table/components/TableHeader';
 import { useSortedArray } from '@/ui/layout/table/hooks/useSortedArray';
 import { type TableMetadata } from '@/ui/layout/table/types/TableMetadata';
+import { useRefreshCoreViewsByObjectMetadataId } from '@/views/hooks/useRefreshCoreViewsByObjectMetadataId';
 import styled from '@emotion/styled';
 import { type DropResult } from '@hello-pangea/dnd';
 import { msg } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react/macro';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRecoilState } from 'recoil';
+import { isDefined } from 'twenty-shared/utils';
 import { IconArchive, IconFilter, IconSearch } from 'twenty-ui/display';
 import { Button } from 'twenty-ui/input';
 import { MenuItemToggle } from 'twenty-ui/navigation';
+import { useUpdateOneFieldMetadataItemMutation } from '~/generated-metadata/graphql';
 import { useMapFieldMetadataItemToSettingsObjectDetailTableItem } from '~/pages/settings/data-model/hooks/useMapFieldMetadataItemToSettingsObjectDetailTableItem';
 import { type SettingsObjectDetailTableItem } from '~/pages/settings/data-model/types/SettingsObjectDetailTableItem';
 import { moveArrayItem } from '~/utils/array/moveArrayItem';
@@ -127,7 +130,6 @@ export const SettingsObjectFieldTable = ({
     }),
   );
 
-  const { updateOneFieldMetadataItem } = useUpdateOneFieldMetadataItem();
 
   useEffect(() => {
     setSettingsObjectFields(objectMetadataItem.fields);
@@ -168,9 +170,16 @@ export const SettingsObjectFieldTable = ({
     });
   }, [sortedAllObjectSettingsDetailItems, searchTerm, showInactive]);
 
+  const { refreshCoreViewsByObjectMetadataId } =
+    useRefreshCoreViewsByObjectMetadataId();
+  const { refreshObjectMetadataItems } =
+    useRefreshObjectMetadataItems('network-only');
+  const [updateOneFieldMetadataItemMutation] =
+    useUpdateOneFieldMetadataItemMutation();
+
   const handleDragEnd = useCallback(
     async (result: DropResult) => {
-      if (!result.destination) {
+      if (!result.destination || !settingsObjectFields) {
         return;
       }
 
@@ -181,83 +190,94 @@ export const SettingsObjectFieldTable = ({
         return;
       }
 
-      if (!settingsObjectFields) return;
-
-      // Get the field IDs from the currently displayed (filtered) list
+      // 1. Get current visible list IDs
       const currentFilteredFieldIds = filteredItems.map(
         (item) => item.fieldMetadataItem.id,
       );
 
-      // Reorder the filtered field IDs
+      // 2. Reorder visible IDs
       const reorderedFilteredIds = moveArrayItem(currentFilteredFieldIds, {
         fromIndex: sourceIndex,
         toIndex: destinationIndex,
       });
 
-      // Get all non-system fields sorted by their current position
+      // 3. Get non-visual/hidden fields (to keep them in state)
       const nonSystemFields = settingsObjectFields.filter(
         (field) => !field.isSystem,
       );
-
-      // Find fields that are not in the filtered list (hidden by search/filter)
       const filteredIdsSet = new Set(reorderedFilteredIds);
-      const hiddenFieldIds = nonSystemFields
-        .filter((field) => !filteredIdsSet.has(field.id))
-        .map((field) => field.id);
+      const hiddenFields = nonSystemFields.filter(
+        (field) => !filteredIdsSet.has(field.id),
+      );
 
-      // Combine: reordered visible fields first, then hidden fields
-      const allFieldIdsInNewOrder = [...reorderedFilteredIds, ...hiddenFieldIds];
+      // 4. Construct new state: Visible fields (reordered) + Hidden fields
+      // Important: We assign new positions sequentially to visible fields matching the visual order
+      const fieldsToUpdate: ObjectMetadataItem['fields'] = [];
 
-      // Map to fields with new positions
-      const reorderedFields = allFieldIdsInNewOrder.map((fieldId, index) => {
-        const field = nonSystemFields.find((f) => f.id === fieldId);
-        if (!field) {
-          throw new Error(`Field ${fieldId} not found`);
-        }
-        return {
-          ...field,
-          settings: {
-            ...field.settings,
-            position: index,
-          },
-        };
-      });
+      const reorderedVisibleFields = reorderedFilteredIds
+        .map((id, index) => {
+          const field = nonSystemFields.find((f) => f.id === id);
+          if (!field) return null;
 
-      // Optimistic update - include system fields unchanged
+          const updatedField = {
+            ...field,
+            settings: {
+              ...field.settings,
+              position: index, // Assign clean sequential index
+            },
+          };
+
+          // Only add to update list if position actually changed
+          if (field.settings?.position !== index) {
+            fieldsToUpdate.push(updatedField);
+          }
+
+          return updatedField;
+        })
+        .filter(isDefined);
+
+      const allNonSystemFields = [...reorderedVisibleFields, ...hiddenFields];
+
+      // 5. Optimistic Update
       const systemFields = settingsObjectFields.filter(
         (field) => field.isSystem,
       );
-      setSettingsObjectFields([...reorderedFields, ...systemFields]);
+      setSettingsObjectFields([...allNonSystemFields, ...systemFields]);
 
-      // Only update the field that was actually moved (to avoid multiple parallel refreshes)
-      const movedFieldId = currentFilteredFieldIds[sourceIndex];
-      const movedFieldNewPosition = reorderedFilteredIds.indexOf(movedFieldId);
-      const movedField = reorderedFields.find((f) => f.id === movedFieldId);
-
-      if (!movedField) return;
-
+      // 6. Batch Server Update (Parallel mutations)
       try {
-        await updateOneFieldMetadataItem({
-          objectMetadataId: objectMetadataItem.id,
-          fieldMetadataIdToUpdate: movedField.id,
-          updatePayload: {
-            settings: {
-              ...movedField.settings,
-              position: movedFieldNewPosition,
-            },
-          },
-        });
+        await Promise.all(
+          fieldsToUpdate.map((field) =>
+            updateOneFieldMetadataItemMutation({
+              variables: {
+                idToUpdate: field.id,
+                updatePayload: {
+                  settings: field.settings,
+                },
+              },
+            }),
+          ),
+        );
+
+        // 7. Single Refresh after all updates
+        await Promise.all([
+          refreshObjectMetadataItems(),
+          refreshCoreViewsByObjectMetadataId(objectMetadataItem.id),
+        ]);
       } catch (error) {
-        // Revert optimistic update on error
+        // Revert on error
         setSettingsObjectFields(settingsObjectFields);
+        console.error('Failed to update field positions', error);
       }
     },
     [
       filteredItems,
       settingsObjectFields,
       objectMetadataItem.id,
-      updateOneFieldMetadataItem,
       setSettingsObjectFields,
+      updateOneFieldMetadataItemMutation,
+      refreshObjectMetadataItems,
+      refreshCoreViewsByObjectMetadataId,
     ],
   );
 
