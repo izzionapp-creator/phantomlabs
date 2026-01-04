@@ -66,6 +66,7 @@ const StyledNameLabel = styled.div`
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
+  color: ${({ theme }) => theme.font.color.primary};
 `;
 
 const StyledInactiveLabel = styled.span`
@@ -231,6 +232,7 @@ export const SettingsObjectFieldItemTableRow = ({
       }
       ref={draggableProvided?.innerRef}
       {...draggableProvided?.draggableProps}
+      {...draggableProvided?.dragHandleProps}
       style={{
         ...draggableProvided?.draggableProps.style,
         ...(draggableSnapshot?.isDragging
@@ -244,12 +246,10 @@ export const SettingsObjectFieldItemTableRow = ({
     >
       <StyledNameTableCell>
         {draggableProvided && (
-          <div {...draggableProvided.dragHandleProps}>
-            <StyledIconGripVertical
-              size={theme.icon.size.md}
-              stroke={theme.icon.stroke.sm}
-            />
-          </div>
+          <StyledIconGripVertical
+            size={theme.icon.size.md}
+            stroke={theme.icon.stroke.sm}
+          />
         )}
         <UndecoratedLink
           to={linkToNavigate}
