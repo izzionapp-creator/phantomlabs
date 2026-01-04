@@ -23,7 +23,7 @@ import {
 } from '@hello-pangea/dnd';
 import { msg } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react/macro';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRecoilState } from 'recoil';
 import { IconArchive, IconFilter, IconSearch } from 'twenty-ui/display';
 import { Button } from 'twenty-ui/input';
@@ -132,103 +132,6 @@ export const SettingsObjectFieldTable = ({
 
   const { updateOneFieldMetadataItem } = useUpdateOneFieldMetadataItem();
 
-  // Get fields sorted by position (without filtering or other sorting)
-  const fieldsSortedByPosition = useMemo(() => {
-    if (!settingsObjectFields) return [];
-
-    const nonSystemFields = settingsObjectFields.filter(
-      (field) => !field.isSystem,
-    );
-
-    return [...nonSystemFields].sort((a, b) => {
-      const positionA = a.settings?.position ?? 0;
-      const positionB = b.settings?.position ?? 0;
-      return positionA - positionB;
-    });
-  }, [settingsObjectFields]);
-
-  const handleDragEnd = async (result: DropResult) => {
-    if (!result.destination) {
-      return;
-    }
-
-    const sourceIndex = result.source.index;
-    const destinationIndex = result.destination.index;
-
-    if (sourceIndex === destinationIndex) {
-      return;
-    }
-
-    // Work with the filtered items to get the correct field IDs
-    const movedItem = filteredItems[sourceIndex];
-    if (!movedItem) {
-      return;
-    }
-
-    // Find the actual indices in the sorted-by-position array
-    const sourceIndexInSorted = fieldsSortedByPosition.findIndex(
-      (field) => field.id === movedItem.fieldMetadataItem.id,
-    );
-
-    if (sourceIndexInSorted === -1) {
-      return;
-    }
-
-    // Calculate destination index in sorted array
-    // We need to map from filteredItems indices to fieldsSortedByPosition indices
-    const destinationItem = filteredItems[destinationIndex];
-    if (!destinationItem) {
-      return;
-    }
-
-    const destinationIndexInSorted = fieldsSortedByPosition.findIndex(
-      (field) => field.id === destinationItem.fieldMetadataItem.id,
-    );
-
-    if (destinationIndexInSorted === -1) {
-      return;
-    }
-
-    // Reorder the fields using moveArrayItem
-    const reorderedFields = moveArrayItem(fieldsSortedByPosition, {
-      fromIndex: sourceIndexInSorted,
-      toIndex: destinationIndexInSorted,
-    });
-
-    // Update positions: assign sequential positions based on new order
-    const fieldsWithNewPositions = reorderedFields.map((field, index) => ({
-      ...field,
-      settings: {
-        ...field.settings,
-        position: index * 1000,
-      },
-    }));
-
-    // Update all affected fields
-    const updatePromises = fieldsWithNewPositions
-      .slice(
-        Math.min(sourceIndexInSorted, destinationIndexInSorted),
-        Math.max(sourceIndexInSorted, destinationIndexInSorted) + 1,
-      )
-      .map((field) =>
-        updateOneFieldMetadataItem({
-          objectMetadataId: objectMetadataItem.id,
-          fieldMetadataIdToUpdate: field.id,
-          updatePayload: {
-            settings: {
-              ...field.settings,
-            },
-          },
-        }),
-      );
-
-    // Optimistic update
-    setSettingsObjectFields(fieldsWithNewPositions);
-
-    // Wait for all updates to complete
-    await Promise.all(updatePromises);
-  };
-
   useEffect(() => {
     setSettingsObjectFields(objectMetadataItem.fields);
   }, [objectMetadataItem, setSettingsObjectFields]);
@@ -267,6 +170,107 @@ export const SettingsObjectFieldTable = ({
       return matchesActiveFilter && matchesSearch;
     });
   }, [sortedAllObjectSettingsDetailItems, searchTerm, showInactive]);
+
+  // Get fields sorted by position (without filtering or other sorting)
+  const fieldsSortedByPosition = useMemo(() => {
+    if (!settingsObjectFields) return [];
+
+    const nonSystemFields = settingsObjectFields.filter(
+      (field) => !field.isSystem,
+    );
+
+    return [...nonSystemFields].sort((a, b) => {
+      const positionA = a.settings?.position ?? 0;
+      const positionB = b.settings?.position ?? 0;
+      return positionA - positionB;
+    });
+  }, [settingsObjectFields]);
+
+  const handleDragEnd = useCallback(
+    async (result: DropResult) => {
+      if (!result.destination) {
+        return;
+      }
+
+      const sourceIndex = result.source.index;
+      const destinationIndex = result.destination.index;
+
+      if (sourceIndex === destinationIndex) {
+        return;
+      }
+
+      // Work with the filtered items to get the correct field IDs
+      const movedItem = filteredItems[sourceIndex];
+      if (!movedItem) {
+        return;
+      }
+
+      // Find the actual indices in the sorted-by-position array
+      const sourceIndexInSorted = fieldsSortedByPosition.findIndex(
+        (field) => field.id === movedItem.fieldMetadataItem.id,
+      );
+
+      if (sourceIndexInSorted === -1) {
+        return;
+      }
+
+      // Calculate destination index in sorted array
+      // We need to map from filteredItems indices to fieldsSortedByPosition indices
+      const destinationItem = filteredItems[destinationIndex];
+      if (!destinationItem) {
+        return;
+      }
+
+      const destinationIndexInSorted = fieldsSortedByPosition.findIndex(
+        (field) => field.id === destinationItem.fieldMetadataItem.id,
+      );
+
+      if (destinationIndexInSorted === -1) {
+        return;
+      }
+
+      // Reorder the fields using moveArrayItem
+      const reorderedFields = moveArrayItem(fieldsSortedByPosition, {
+        fromIndex: sourceIndexInSorted,
+        toIndex: destinationIndexInSorted,
+      });
+
+      // Update positions: assign sequential positions based on new order
+      const fieldsWithNewPositions = reorderedFields.map((field, index) => ({
+        ...field,
+        settings: {
+          ...field.settings,
+          position: index * 1000,
+        },
+      }));
+
+      // Optimistic update
+      setSettingsObjectFields(fieldsWithNewPositions);
+
+      // Update all fields with new positions
+      const updatePromises = fieldsWithNewPositions.map((field) =>
+        updateOneFieldMetadataItem({
+          objectMetadataId: objectMetadataItem.id,
+          fieldMetadataIdToUpdate: field.id,
+          updatePayload: {
+            settings: {
+              ...field.settings,
+            },
+          },
+        }),
+      );
+
+      // Wait for all updates to complete
+      await Promise.all(updatePromises);
+    },
+    [
+      filteredItems,
+      fieldsSortedByPosition,
+      objectMetadataItem.id,
+      updateOneFieldMetadataItem,
+      setSettingsObjectFields,
+    ],
+  );
 
   return (
     <>
