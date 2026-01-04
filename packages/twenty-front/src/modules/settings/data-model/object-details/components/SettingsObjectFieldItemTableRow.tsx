@@ -254,29 +254,35 @@ export const SettingsObjectFieldItemTableRow = ({
         <UndecoratedLink
           to={linkToNavigate}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: theme.spacing(2),
             flex: 1,
             minWidth: 0,
             overflow: 'hidden',
           }}
         >
-          {!!Icon && (
-            <Icon
-              style={{ minWidth: theme.icon.size.md }}
-              size={theme.icon.size.md}
-              stroke={theme.icon.stroke.sm}
-            />
-          )}
-          <StyledNameContainer>
-            <StyledNameLabel title={fieldMetadataItem.label}>
-              {fieldMetadataItem.label}
-            </StyledNameLabel>
-            {!fieldMetadataItem.isActive && (
-              <StyledInactiveLabel>{t`Deactivated`}</StyledInactiveLabel>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: theme.spacing(2),
+              width: '100%',
+            }}
+          >
+            {!!Icon && (
+              <Icon
+                style={{ minWidth: theme.icon.size.md }}
+                size={theme.icon.size.md}
+                stroke={theme.icon.stroke.sm}
+              />
             )}
-          </StyledNameContainer>
+            <StyledNameContainer>
+              <StyledNameLabel title={fieldMetadataItem.label}>
+                {fieldMetadataItem.label}
+              </StyledNameLabel>
+              {!fieldMetadataItem.isActive && (
+                <StyledInactiveLabel>{t`Deactivated`}</StyledInactiveLabel>
+              )}
+            </StyledNameContainer>
+          </div>
         </UndecoratedLink>
       </StyledNameTableCell>
 
