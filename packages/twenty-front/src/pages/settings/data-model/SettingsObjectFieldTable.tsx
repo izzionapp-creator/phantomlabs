@@ -1,8 +1,8 @@
 import { useUpdateOneFieldMetadataItem } from '@/object-metadata/hooks/useUpdateOneFieldMetadataItem';
 import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import {
-    SettingsObjectFieldItemTableRow,
-    StyledObjectFieldTableRow,
+  SettingsObjectFieldItemTableRow,
+  StyledObjectFieldTableRow,
 } from '@/settings/data-model/object-details/components/SettingsObjectFieldItemTableRow';
 import { settingsObjectFieldsFamilyState } from '@/settings/data-model/object-details/states/settingsObjectFieldsFamilyState';
 import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
@@ -183,22 +183,45 @@ export const SettingsObjectFieldTable = ({
 
       if (!settingsObjectFields) return;
 
-      // Get non-system fields
+      // Get the field IDs from the currently displayed (filtered) list
+      const currentFilteredFieldIds = filteredItems.map(
+        (item) => item.fieldMetadataItem.id,
+      );
+
+      // Reorder the filtered field IDs
+      const reorderedFilteredIds = moveArrayItem(currentFilteredFieldIds, {
+        fromIndex: sourceIndex,
+        toIndex: destinationIndex,
+      });
+
+      // Get all non-system fields sorted by their current position
       const nonSystemFields = settingsObjectFields.filter(
         (field) => !field.isSystem,
       );
 
-      // Reorder fields directly using moveArrayItem (like SelectForm does)
-      const reorderedFields = moveArrayItem(nonSystemFields, {
-        fromIndex: sourceIndex,
-        toIndex: destinationIndex,
-      }).map((field, index) => ({
-        ...field,
-        settings: {
-          ...field.settings,
-          position: index,
-        },
-      }));
+      // Find fields that are not in the filtered list (hidden by search/filter)
+      const filteredIdsSet = new Set(reorderedFilteredIds);
+      const hiddenFieldIds = nonSystemFields
+        .filter((field) => !filteredIdsSet.has(field.id))
+        .map((field) => field.id);
+
+      // Combine: reordered visible fields first, then hidden fields
+      const allFieldIdsInNewOrder = [...reorderedFilteredIds, ...hiddenFieldIds];
+
+      // Map to fields with new positions
+      const reorderedFields = allFieldIdsInNewOrder.map((fieldId, index) => {
+        const field = nonSystemFields.find((f) => f.id === fieldId);
+        if (!field) {
+          throw new Error(`Field ${fieldId} not found`);
+        }
+        return {
+          ...field,
+          settings: {
+            ...field.settings,
+            position: index,
+          },
+        };
+      });
 
       // Optimistic update - include system fields unchanged
       const systemFields = settingsObjectFields.filter(
@@ -206,22 +229,31 @@ export const SettingsObjectFieldTable = ({
       );
       setSettingsObjectFields([...reorderedFields, ...systemFields]);
 
-      // Only update the fields that were actually reordered
-      const updatePromises = reorderedFields.map((field) =>
-        updateOneFieldMetadataItem({
+      // Only update the field that was actually moved (to avoid multiple parallel refreshes)
+      const movedFieldId = currentFilteredFieldIds[sourceIndex];
+      const movedFieldNewPosition = reorderedFilteredIds.indexOf(movedFieldId);
+      const movedField = reorderedFields.find((f) => f.id === movedFieldId);
+
+      if (!movedField) return;
+
+      try {
+        await updateOneFieldMetadataItem({
           objectMetadataId: objectMetadataItem.id,
-          fieldMetadataIdToUpdate: field.id,
+          fieldMetadataIdToUpdate: movedField.id,
           updatePayload: {
             settings: {
-              ...field.settings,
+              ...movedField.settings,
+              position: movedFieldNewPosition,
             },
           },
-        }),
-      );
-
-      await Promise.all(updatePromises);
+        });
+      } catch (error) {
+        // Revert optimistic update on error
+        setSettingsObjectFields(settingsObjectFields);
+      }
     },
     [
+      filteredItems,
       settingsObjectFields,
       objectMetadataItem.id,
       updateOneFieldMetadataItem,
