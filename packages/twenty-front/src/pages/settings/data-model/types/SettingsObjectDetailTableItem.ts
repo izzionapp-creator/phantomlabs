@@ -9,4 +9,5 @@ export type SettingsObjectDetailTableItem = {
   label: string;
   dataType: string;
   identifierType?: FieldIdentifierType;
+  position?: number;
 };

@@ -7,11 +7,11 @@ import { PageTitle } from '@/ui/utilities/page-title/components/PageTitle';
 import styled from '@emotion/styled';
 import { MainButton } from 'twenty-ui/input';
 import {
-  AnimatedPlaceholder,
-  AnimatedPlaceholderEmptyTextContainer,
-  AnimatedPlaceholderErrorContainer,
-  AnimatedPlaceholderErrorSubTitle,
-  AnimatedPlaceholderErrorTitle,
+    AnimatedPlaceholder,
+    AnimatedPlaceholderEmptyTextContainer,
+    AnimatedPlaceholderErrorContainer,
+    AnimatedPlaceholderErrorSubTitle,
+    AnimatedPlaceholderErrorTitle,
 } from 'twenty-ui/layout';
 import { UndecoratedLink } from 'twenty-ui/navigation';
 
@@ -39,7 +39,7 @@ export const NotFound = () => {
 
   return (
     <>
-      <PageTitle title={t`Page Not Found | Twenty`} />
+      <PageTitle title={t`Page Not Found | Phantom CRM`} />
       <StyledBackDrop>
         <AnimatedPlaceholderErrorContainer>
           <AnimatedPlaceholder type="error404" />

@@ -17,6 +17,7 @@ import { FieldMetadataType, SettingsPath } from 'twenty-shared/types';
 import { getSettingsPath, isDefined } from 'twenty-shared/utils';
 import {
   IconChevronRight,
+  IconGripVertical,
   IconMinus,
   IconPlus,
   useIcons,
@@ -31,10 +32,17 @@ import { isObjectMetadataSettingsReadOnly } from '@/object-record/read-only/util
 import { RELATION_TYPES } from '../../constants/RelationTypes';
 import { SettingsObjectFieldDataType } from './SettingsObjectFieldDataType';
 
+import {
+  DraggableProvided,
+  DraggableStateSnapshot,
+} from '@hello-pangea/dnd';
+
 type SettingsObjectFieldItemTableRowProps = {
   settingsObjectDetailTableItem: SettingsObjectDetailTableItem;
   status: 'active' | 'disabled';
   mode: 'view' | 'new-field';
+  draggableProvided?: DraggableProvided;
+  draggableSnapshot?: DraggableStateSnapshot;
 };
 
 export const StyledObjectFieldTableRow = styled(TableRow)`
@@ -84,10 +92,27 @@ const StyledIconChevronRight = styled(IconChevronRight)`
   color: ${({ theme }) => theme.font.color.tertiary};
 `;
 
+const StyledIconGripVertical = styled(IconGripVertical)`
+  cursor: grab;
+  color: ${({ theme }) => theme.font.color.extraLight};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+
+  &:active {
+    cursor: grabbing;
+  }
+`;
+
+
+
 export const SettingsObjectFieldItemTableRow = ({
   settingsObjectDetailTableItem,
   mode,
   status,
+  draggableProvided,
+  draggableSnapshot,
 }: SettingsObjectFieldItemTableRowProps) => {
   const { t } = useLingui();
   const { fieldMetadataItem, identifierType, objectMetadataItem } =
@@ -204,9 +229,29 @@ export const SettingsObjectFieldItemTableRow = ({
               })
           : undefined
       }
+      ref={draggableProvided?.innerRef}
+      {...draggableProvided?.draggableProps}
+      style={{
+        ...draggableProvided?.draggableProps.style,
+        ...(draggableSnapshot?.isDragging
+          ? {
+              background: theme.background.transparent.light,
+              borderColor: theme.border.color.medium,
+              display: 'grid', // Ensure grid layout is preserved while dragging
+            }
+          : {}),
+      }}
     >
       <UndecoratedLink to={linkToNavigate}>
         <StyledNameTableCell>
+          {draggableProvided && (
+            <div {...draggableProvided.dragHandleProps}>
+              <StyledIconGripVertical
+                size={theme.icon.size.md}
+                stroke={theme.icon.stroke.sm}
+              />
+            </div>
+          )}
           {!!Icon && (
             <Icon
               style={{ minWidth: theme.icon.size.md }}

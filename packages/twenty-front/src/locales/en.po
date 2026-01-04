@@ -1,4 +1,4 @@
-msgid ""
+﻿msgid ""
 msgstr ""
 "POT-Creation-Date: 2025-01-30 18:16+0100\n"
 "MIME-Version: 1.0\n"
@@ -2028,8 +2028,8 @@ msgstr "Bullet List"
 
 #. js-lingui-id: 8Pfllj
 #: src/modules/auth/sign-in-up/components/FooterNote.tsx
-msgid "By using Twenty, you agree to the"
-msgstr "By using Twenty, you agree to the"
+msgid "By using Phantom CRM, you agree to the"
+msgstr "By using Phantom CRM, you agree to the"
 
 #. js-lingui-id: Yx41df
 #: src/modules/auth/sign-in-up/components/FooterNote.tsx
@@ -2305,8 +2305,8 @@ msgstr "Check your inbox to verify your new email address."
 
 #. js-lingui-id: SxwQE8
 #: src/modules/billing/hooks/useHandleCheckoutSession.ts
-msgid "Checkout session error. Please retry or contact Twenty team"
-msgstr "Checkout session error. Please retry or contact Twenty team"
+msgid "Checkout session error. Please retry or contact Phantom CRM team"
+msgstr "Checkout session error. Please retry or contact Phantom CRM team"
 
 #. js-lingui-id: SviKkE
 #: src/pages/settings/profile/appearance/components/LocalePicker.tsx
@@ -4744,8 +4744,8 @@ msgstr "Error while cancelling plan switching."
 
 #. js-lingui-id: QmR+2U
 #: src/modules/billing/hooks/useEndSubscriptionTrialPeriod.ts
-msgid "Error while ending trial period. Please contact Twenty team."
-msgstr "Error while ending trial period. Please contact Twenty team."
+msgid "Error while ending trial period. Please contact Phantom CRM team."
+msgstr "Error while ending trial period. Please contact Phantom CRM team."
 
 #. js-lingui-id: 5g78zo
 #: src/pages/settings/members/SettingsWorkspaceMember.tsx
@@ -8519,8 +8519,8 @@ msgstr "page layout widget"
 
 #. js-lingui-id: NRvxzv
 #: src/pages/not-found/NotFound.tsx
-msgid "Page Not Found | Twenty"
-msgstr "Page Not Found | Twenty"
+msgid "Page Not Found | Phantom CRM"
+msgstr "Page Not Found | Phantom CRM"
 
 #. js-lingui-id: ijBN4V
 #: src/modules/advanced-text-editor/extensions/slash-command/DefaultSlashCommands.ts
@@ -10831,8 +10831,8 @@ msgstr "Sync with Outlook"
 
 #. js-lingui-id: +9x4tK
 #: src/pages/onboarding/SyncEmails.tsx
-msgid "Sync your Emails and Calendar with Twenty. Choose your privacy settings."
-msgstr "Sync your Emails and Calendar with Twenty. Choose your privacy settings."
+msgid "Sync your Emails and Calendar with Phantom CRM. Choose your privacy settings."
+msgstr "Sync your Emails and Calendar with Phantom CRM. Choose your privacy settings."
 
 #. js-lingui-id: N2FcBE
 #: src/modules/settings/accounts/components/SettingsAccountsConnectedAccountsRowRightContainer.tsx
@@ -11557,8 +11557,8 @@ msgstr "Turquoise"
 
 #. js-lingui-id: JnaRPe
 #: src/modules/spreadsheet-import/steps/components/MatchColumnsStep/components/ColumnGrid.tsx
-msgid "Twenty fields"
-msgstr "Twenty fields"
+msgid "Phantom CRM fields"
+msgstr "Phantom CRM fields"
 
 #. js-lingui-id: YIjS4q
 #: src/pages/settings/ai/components/SettingsAgentModelCapabilities.tsx

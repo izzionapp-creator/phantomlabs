@@ -1,7 +1,8 @@
+import { useUpdateOneFieldMetadataItem } from '@/object-metadata/hooks/useUpdateOneFieldMetadataItem';
 import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import {
-  SettingsObjectFieldItemTableRow,
-  StyledObjectFieldTableRow,
+    SettingsObjectFieldItemTableRow,
+    StyledObjectFieldTableRow,
 } from '@/settings/data-model/object-details/components/SettingsObjectFieldItemTableRow';
 import { settingsObjectFieldsFamilyState } from '@/settings/data-model/object-details/states/settingsObjectFieldsFamilyState';
 import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
@@ -14,6 +15,12 @@ import { TableHeader } from '@/ui/layout/table/components/TableHeader';
 import { useSortedArray } from '@/ui/layout/table/hooks/useSortedArray';
 import { type TableMetadata } from '@/ui/layout/table/types/TableMetadata';
 import styled from '@emotion/styled';
+import {
+    DragDropContext,
+    Draggable,
+    Droppable,
+    type DropResult,
+} from '@hello-pangea/dnd';
 import { msg } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react/macro';
 import { useEffect, useMemo, useState } from 'react';
@@ -24,6 +31,7 @@ import { MenuItemToggle } from 'twenty-ui/navigation';
 import { useMapFieldMetadataItemToSettingsObjectDetailTableItem } from '~/pages/settings/data-model/hooks/useMapFieldMetadataItemToSettingsObjectDetailTableItem';
 import { type SettingsObjectDetailTableItem } from '~/pages/settings/data-model/types/SettingsObjectDetailTableItem';
 import { normalizeSearchText } from '~/utils/normalizeSearchText';
+
 
 const GET_SETTINGS_OBJECT_DETAIL_TABLE_METADATA_STANDARD: TableMetadata<SettingsObjectDetailTableItem> =
   {
@@ -49,7 +57,7 @@ const GET_SETTINGS_OBJECT_DETAIL_TABLE_METADATA_STANDARD: TableMetadata<Settings
       },
     ],
     initialSort: {
-      fieldName: 'label',
+      fieldName: 'position',
       orderBy: 'AscNullsLast',
     },
   };
@@ -78,7 +86,7 @@ const GET_SETTINGS_OBJECT_DETAIL_TABLE_METADATA_CUSTOM: TableMetadata<SettingsOb
       },
     ],
     initialSort: {
-      fieldName: 'label',
+      fieldName: 'position',
       orderBy: 'AscNullsLast',
     },
   };
@@ -120,6 +128,60 @@ export const SettingsObjectFieldTable = ({
       objectMetadataItemId: objectMetadataItem.id,
     }),
   );
+
+  const { updateOneFieldMetadataItem } = useUpdateOneFieldMetadataItem();
+
+  const handleDragEnd = async (result: DropResult) => {
+    if (!result.destination) {
+      return;
+    }
+
+    const sourceIndex = result.source.index;
+    const destinationIndex = result.destination.index;
+
+    if (sourceIndex === destinationIndex) {
+      return;
+    }
+
+    const reorderedItems = Array.from(filteredItems);
+    const [movedItem] = reorderedItems.splice(sourceIndex, 1);
+    reorderedItems.splice(destinationIndex, 0, movedItem);
+
+    // Calculate new position
+    const prevItem = reorderedItems[destinationIndex - 1];
+    const nextItem = reorderedItems[destinationIndex + 1];
+
+    const prevPosition = prevItem?.position ?? (destinationIndex > 0 ? (destinationIndex - 1) * 1000 : 0);
+    const nextPosition = nextItem?.position ?? (destinationIndex + 1) * 1000;
+
+    const newPosition = (prevPosition + nextPosition) / 2;
+
+    // Optimistic update
+    setSettingsObjectFields((prev) =>
+      prev?.map((field) =>
+        field.id === movedItem.fieldMetadataItem.id
+          ? {
+              ...field,
+              settings: {
+                ...field.settings,
+                position: newPosition,
+              },
+            }
+          : field,
+      ) ?? null
+    );
+
+    await updateOneFieldMetadataItem({
+      objectMetadataId: objectMetadataItem.id,
+      fieldMetadataIdToUpdate: movedItem.fieldMetadataItem.id,
+      updatePayload: {
+        settings: {
+          ...movedItem.fieldMetadataItem.settings,
+          position: newPosition,
+        },
+      },
+    });
+  };
 
   useEffect(() => {
     setSettingsObjectFields(objectMetadataItem.fields);
@@ -198,34 +260,57 @@ export const SettingsObjectFieldTable = ({
           }
         />
       </StyledSearchAndFilterContainer>
-      <Table>
-        <StyledObjectFieldTableRow>
-          {tableMetadata.fields.map((item) => (
-            <SortableTableHeader
-              key={item.fieldName}
-              fieldName={item.fieldName}
-              label={t(item.fieldLabel)}
-              tableId={tableMetadata.tableId}
-              initialSort={tableMetadata.initialSort}
-            />
-          ))}
-          <TableHeader></TableHeader>
-        </StyledObjectFieldTableRow>
-        {filteredItems.map((objectSettingsDetailItem) => {
-          const status = objectSettingsDetailItem.fieldMetadataItem.isActive
-            ? 'active'
-            : 'disabled';
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Table>
+          <StyledObjectFieldTableRow>
+            {tableMetadata.fields.map((item) => (
+              <SortableTableHeader
+                key={item.fieldName}
+                fieldName={item.fieldName}
+                label={t(item.fieldLabel)}
+                tableId={tableMetadata.tableId}
+                initialSort={tableMetadata.initialSort}
+              />
+            ))}
+            <TableHeader></TableHeader>
+          </StyledObjectFieldTableRow>
+          <Droppable droppableId="object-fields-list">
+            {(droppableProvided) => (
+              <div
+                ref={droppableProvided.innerRef}
+                {...droppableProvided.droppableProps}
+              >
+                {filteredItems.map((objectSettingsDetailItem, index) => {
+                  const status = objectSettingsDetailItem.fieldMetadataItem.isActive
+                    ? 'active'
+                    : 'disabled';
 
-          return (
-            <SettingsObjectFieldItemTableRow
-              key={objectSettingsDetailItem.fieldMetadataItem.id}
-              settingsObjectDetailTableItem={objectSettingsDetailItem}
-              status={status}
-              mode={mode}
-            />
-          );
-        })}
-      </Table>
+                  return (
+                    <Draggable
+                      key={objectSettingsDetailItem.fieldMetadataItem.id}
+                      draggableId={objectSettingsDetailItem.fieldMetadataItem.id}
+                      index={index}
+                      isDragDisabled={!!searchTerm}
+                    >
+                      {(draggableProvided, draggableSnapshot) => (
+                        <SettingsObjectFieldItemTableRow
+                          key={objectSettingsDetailItem.fieldMetadataItem.id}
+                          settingsObjectDetailTableItem={objectSettingsDetailItem}
+                          status={status}
+                          mode={mode}
+                          draggableProvided={draggableProvided}
+                          draggableSnapshot={draggableSnapshot}
+                        />
+                      )}
+                    </Draggable>
+                  );
+                })}
+                {droppableProvided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </Table>
+      </DragDropContext>
     </>
   );
 };

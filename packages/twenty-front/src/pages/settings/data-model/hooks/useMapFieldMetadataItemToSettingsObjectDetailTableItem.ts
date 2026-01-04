@@ -46,6 +46,7 @@ export const useMapFieldMetadataItemToSettingsObjectDetailTableItem = (
       label: fieldMetadataItem.label,
       identifierType: identifierType,
       objectMetadataItem,
+      position: fieldMetadataItem.settings?.position,
     } satisfies SettingsObjectDetailTableItem;
   };
 
