@@ -16,11 +16,11 @@ import { useRecoilState, useRecoilValue } from 'recoil';
 import { FieldMetadataType, SettingsPath } from 'twenty-shared/types';
 import { getSettingsPath, isDefined } from 'twenty-shared/utils';
 import {
-  IconChevronRight,
-  IconGripVertical,
-  IconMinus,
-  IconPlus,
-  useIcons,
+    IconChevronRight,
+    IconGripVertical,
+    IconMinus,
+    IconPlus,
+    useIcons,
 } from 'twenty-ui/display';
 import { LightIconButton } from 'twenty-ui/input';
 import { UndecoratedLink } from 'twenty-ui/navigation';
@@ -239,6 +239,7 @@ export const SettingsObjectFieldItemTableRow = ({
                 style={{ minWidth: theme.icon.size.md }}
                 size={theme.icon.size.md}
                 stroke={theme.icon.stroke.sm}
+                color={theme.color.blue}
               />
             )}
             <StyledNameContainer>

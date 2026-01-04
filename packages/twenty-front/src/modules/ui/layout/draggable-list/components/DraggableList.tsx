@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { v4 } from 'uuid';
 type DraggableListProps = {
   draggableItems: React.ReactNode;
-  onDragEnd: OnDragEndResponder;
+  onDragEnd?: OnDragEndResponder;
   onDragStart?: OnDragStartResponder;
 };
 
@@ -25,7 +25,7 @@ export const DraggableList = ({
   const [v4Persistable] = useState(v4());
 
   return (
-    <DragDropContext onDragEnd={onDragEnd} onDragStart={onDragStart}>
+    <DragDropContext onDragEnd={onDragEnd ?? (() => {})} onDragStart={onDragStart}>
       <StyledDragDropItemsWrapper>
         <Droppable droppableId={v4Persistable}>
           {(provided) => (

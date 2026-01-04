@@ -1,8 +1,8 @@
 import { useUpdateOneFieldMetadataItem } from '@/object-metadata/hooks/useUpdateOneFieldMetadataItem';
 import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import {
-  SettingsObjectFieldItemTableRow,
-  StyledObjectFieldTableRow,
+    SettingsObjectFieldItemTableRow,
+    StyledObjectFieldTableRow,
 } from '@/settings/data-model/object-details/components/SettingsObjectFieldItemTableRow';
 import { settingsObjectFieldsFamilyState } from '@/settings/data-model/object-details/states/settingsObjectFieldsFamilyState';
 import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
@@ -183,74 +183,31 @@ export const SettingsObjectFieldTable = ({
 
       if (!settingsObjectFields) return;
 
-      // Get all non-system fields sorted by position
+      // Get non-system fields
       const nonSystemFields = settingsObjectFields.filter(
         (field) => !field.isSystem,
       );
 
-      const fieldsSortedByPosition = [...nonSystemFields].sort((a, b) => {
-        const positionA = a.settings?.position ?? 0;
-        const positionB = b.settings?.position ?? 0;
-        return positionA - positionB;
-      });
-
-      // Get the field IDs from filteredItems in their current order
-      const filteredFieldIds = filteredItems.map(
-        (item) => item.fieldMetadataItem.id,
-      );
-
-      // Reorder the filtered field IDs (like the select form does)
-      const reorderedFilteredFieldIds = moveArrayItem(filteredFieldIds, {
+      // Reorder fields directly using moveArrayItem (like SelectForm does)
+      const reorderedFields = moveArrayItem(nonSystemFields, {
         fromIndex: sourceIndex,
         toIndex: destinationIndex,
-      });
-
-      // Build the complete reordered list: reordered filtered items first, then others
-      const allFieldIdsInOriginalOrder = fieldsSortedByPosition.map(
-        (field) => field.id,
-      );
-      const filteredIdsSet = new Set(reorderedFilteredFieldIds);
-
-      // Create the new order: reordered filtered items first, then others in their original positions
-      const reorderedAllFieldIds = [
-        ...reorderedFilteredFieldIds,
-        ...allFieldIdsInOriginalOrder.filter((id) => !filteredIdsSet.has(id)),
-      ];
-
-      // Map to fields with new positions
-      const fieldsWithNewPositions = reorderedAllFieldIds.map(
-        (fieldId, index) => {
-          const field = fieldsSortedByPosition.find((f) => f.id === fieldId);
-          if (!field) {
-            const fallbackField = settingsObjectFields.find(
-              (f) => f.id === fieldId,
-            );
-            if (!fallbackField) {
-              throw new Error(`Field ${fieldId} not found`);
-            }
-            return {
-              ...fallbackField,
-              settings: {
-                ...fallbackField.settings,
-                position: index * 1000,
-              },
-            };
-          }
-          return {
-            ...field,
-            settings: {
-              ...field.settings,
-              position: index * 1000,
-            },
-          };
+      }).map((field, index) => ({
+        ...field,
+        settings: {
+          ...field.settings,
+          position: index,
         },
+      }));
+
+      // Optimistic update - include system fields unchanged
+      const systemFields = settingsObjectFields.filter(
+        (field) => field.isSystem,
       );
+      setSettingsObjectFields([...reorderedFields, ...systemFields]);
 
-      // Optimistic update
-      setSettingsObjectFields(fieldsWithNewPositions);
-
-      // Update all fields with new positions
-      const updatePromises = fieldsWithNewPositions.map((field) =>
+      // Only update the fields that were actually reordered
+      const updatePromises = reorderedFields.map((field) =>
         updateOneFieldMetadataItem({
           objectMetadataId: objectMetadataItem.id,
           fieldMetadataIdToUpdate: field.id,
@@ -262,11 +219,9 @@ export const SettingsObjectFieldTable = ({
         }),
       );
 
-      // Wait for all updates to complete
       await Promise.all(updatePromises);
     },
     [
-      filteredItems,
       settingsObjectFields,
       objectMetadataItem.id,
       updateOneFieldMetadataItem,
