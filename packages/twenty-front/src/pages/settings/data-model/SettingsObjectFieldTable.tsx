@@ -1,8 +1,8 @@
 import { useUpdateOneFieldMetadataItem } from '@/object-metadata/hooks/useUpdateOneFieldMetadataItem';
 import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import {
-    SettingsObjectFieldItemTableRow,
-    StyledObjectFieldTableRow,
+  SettingsObjectFieldItemTableRow,
+  StyledObjectFieldTableRow,
 } from '@/settings/data-model/object-details/components/SettingsObjectFieldItemTableRow';
 import { settingsObjectFieldsFamilyState } from '@/settings/data-model/object-details/states/settingsObjectFieldsFamilyState';
 import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
@@ -16,10 +16,10 @@ import { useSortedArray } from '@/ui/layout/table/hooks/useSortedArray';
 import { type TableMetadata } from '@/ui/layout/table/types/TableMetadata';
 import styled from '@emotion/styled';
 import {
-    DragDropContext,
-    Draggable,
-    Droppable,
-    type DropResult,
+  DragDropContext,
+  Draggable,
+  Droppable,
+  type DropResult,
 } from '@hello-pangea/dnd';
 import { msg } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react/macro';
@@ -30,6 +30,7 @@ import { Button } from 'twenty-ui/input';
 import { MenuItemToggle } from 'twenty-ui/navigation';
 import { useMapFieldMetadataItemToSettingsObjectDetailTableItem } from '~/pages/settings/data-model/hooks/useMapFieldMetadataItemToSettingsObjectDetailTableItem';
 import { type SettingsObjectDetailTableItem } from '~/pages/settings/data-model/types/SettingsObjectDetailTableItem';
+import { moveArrayItem } from '~/utils/array/moveArrayItem';
 import { normalizeSearchText } from '~/utils/normalizeSearchText';
 
 
@@ -131,6 +132,21 @@ export const SettingsObjectFieldTable = ({
 
   const { updateOneFieldMetadataItem } = useUpdateOneFieldMetadataItem();
 
+  // Get fields sorted by position (without filtering or other sorting)
+  const fieldsSortedByPosition = useMemo(() => {
+    if (!settingsObjectFields) return [];
+
+    const nonSystemFields = settingsObjectFields.filter(
+      (field) => !field.isSystem,
+    );
+
+    return [...nonSystemFields].sort((a, b) => {
+      const positionA = a.settings?.position ?? 0;
+      const positionB = b.settings?.position ?? 0;
+      return positionA - positionB;
+    });
+  }, [settingsObjectFields]);
+
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) {
       return;
@@ -143,44 +159,74 @@ export const SettingsObjectFieldTable = ({
       return;
     }
 
-    const reorderedItems = Array.from(filteredItems);
-    const [movedItem] = reorderedItems.splice(sourceIndex, 1);
-    reorderedItems.splice(destinationIndex, 0, movedItem);
+    // Work with the filtered items to get the correct field IDs
+    const movedItem = filteredItems[sourceIndex];
+    if (!movedItem) {
+      return;
+    }
 
-    // Calculate new position
-    const prevItem = reorderedItems[destinationIndex - 1];
-    const nextItem = reorderedItems[destinationIndex + 1];
-
-    const prevPosition = prevItem?.position ?? (destinationIndex > 0 ? (destinationIndex - 1) * 1000 : 0);
-    const nextPosition = nextItem?.position ?? (destinationIndex + 1) * 1000;
-
-    const newPosition = (prevPosition + nextPosition) / 2;
-
-    // Optimistic update
-    setSettingsObjectFields((prev) =>
-      prev?.map((field) =>
-        field.id === movedItem.fieldMetadataItem.id
-          ? {
-              ...field,
-              settings: {
-                ...field.settings,
-                position: newPosition,
-              },
-            }
-          : field,
-      ) ?? null
+    // Find the actual indices in the sorted-by-position array
+    const sourceIndexInSorted = fieldsSortedByPosition.findIndex(
+      (field) => field.id === movedItem.fieldMetadataItem.id,
     );
 
-    await updateOneFieldMetadataItem({
-      objectMetadataId: objectMetadataItem.id,
-      fieldMetadataIdToUpdate: movedItem.fieldMetadataItem.id,
-      updatePayload: {
-        settings: {
-          ...movedItem.fieldMetadataItem.settings,
-          position: newPosition,
-        },
-      },
+    if (sourceIndexInSorted === -1) {
+      return;
+    }
+
+    // Calculate destination index in sorted array
+    // We need to map from filteredItems indices to fieldsSortedByPosition indices
+    const destinationItem = filteredItems[destinationIndex];
+    if (!destinationItem) {
+      return;
+    }
+
+    const destinationIndexInSorted = fieldsSortedByPosition.findIndex(
+      (field) => field.id === destinationItem.fieldMetadataItem.id,
+    );
+
+    if (destinationIndexInSorted === -1) {
+      return;
+    }
+
+    // Reorder the fields using moveArrayItem
+    const reorderedFields = moveArrayItem(fieldsSortedByPosition, {
+      fromIndex: sourceIndexInSorted,
+      toIndex: destinationIndexInSorted,
     });
+
+    // Update positions: assign sequential positions based on new order
+    const fieldsWithNewPositions = reorderedFields.map((field, index) => ({
+      ...field,
+      settings: {
+        ...field.settings,
+        position: index * 1000,
+      },
+    }));
+
+    // Update all affected fields
+    const updatePromises = fieldsWithNewPositions
+      .slice(
+        Math.min(sourceIndexInSorted, destinationIndexInSorted),
+        Math.max(sourceIndexInSorted, destinationIndexInSorted) + 1,
+      )
+      .map((field) =>
+        updateOneFieldMetadataItem({
+          objectMetadataId: objectMetadataItem.id,
+          fieldMetadataIdToUpdate: field.id,
+          updatePayload: {
+            settings: {
+              ...field.settings,
+            },
+          },
+        }),
+      );
+
+    // Optimistic update
+    setSettingsObjectFields(fieldsWithNewPositions);
+
+    // Wait for all updates to complete
+    await Promise.all(updatePromises);
   };
 
   useEffect(() => {
