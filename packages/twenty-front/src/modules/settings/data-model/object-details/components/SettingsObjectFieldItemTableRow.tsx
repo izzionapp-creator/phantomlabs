@@ -242,16 +242,26 @@ export const SettingsObjectFieldItemTableRow = ({
           : {}),
       }}
     >
-      <UndecoratedLink to={linkToNavigate}>
-        <StyledNameTableCell>
-          {draggableProvided && (
-            <div {...draggableProvided.dragHandleProps}>
-              <StyledIconGripVertical
-                size={theme.icon.size.md}
-                stroke={theme.icon.stroke.sm}
-              />
-            </div>
-          )}
+      <StyledNameTableCell>
+        {draggableProvided && (
+          <div {...draggableProvided.dragHandleProps}>
+            <StyledIconGripVertical
+              size={theme.icon.size.md}
+              stroke={theme.icon.stroke.sm}
+            />
+          </div>
+        )}
+        <UndecoratedLink
+          to={linkToNavigate}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: theme.spacing(2),
+            flex: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+          }}
+        >
           {!!Icon && (
             <Icon
               style={{ minWidth: theme.icon.size.md }}
@@ -267,8 +277,8 @@ export const SettingsObjectFieldItemTableRow = ({
               <StyledInactiveLabel>{t`Deactivated`}</StyledInactiveLabel>
             )}
           </StyledNameContainer>
-        </StyledNameTableCell>
-      </UndecoratedLink>
+        </UndecoratedLink>
+      </StyledNameTableCell>
 
       <TableCell>{typeLabel}</TableCell>
       <TableCell>
