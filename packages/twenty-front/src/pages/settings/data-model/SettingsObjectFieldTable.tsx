@@ -171,21 +171,6 @@ export const SettingsObjectFieldTable = ({
     });
   }, [sortedAllObjectSettingsDetailItems, searchTerm, showInactive]);
 
-  // Get fields sorted by position (without filtering or other sorting)
-  const fieldsSortedByPosition = useMemo(() => {
-    if (!settingsObjectFields) return [];
-
-    const nonSystemFields = settingsObjectFields.filter(
-      (field) => !field.isSystem,
-    );
-
-    return [...nonSystemFields].sort((a, b) => {
-      const positionA = a.settings?.position ?? 0;
-      const positionB = b.settings?.position ?? 0;
-      return positionA - positionB;
-    });
-  }, [settingsObjectFields]);
-
   const handleDragEnd = useCallback(
     async (result: DropResult) => {
       if (!result.destination) {
@@ -199,50 +184,70 @@ export const SettingsObjectFieldTable = ({
         return;
       }
 
-      // Work with the filtered items to get the correct field IDs
-      const movedItem = filteredItems[sourceIndex];
-      if (!movedItem) {
-        return;
-      }
+      if (!settingsObjectFields) return;
 
-      // Find the actual indices in the sorted-by-position array
-      const sourceIndexInSorted = fieldsSortedByPosition.findIndex(
-        (field) => field.id === movedItem.fieldMetadataItem.id,
+      // Get all non-system fields sorted by position
+      const nonSystemFields = settingsObjectFields.filter(
+        (field) => !field.isSystem,
       );
 
-      if (sourceIndexInSorted === -1) {
-        return;
-      }
-
-      // Calculate destination index in sorted array
-      // We need to map from filteredItems indices to fieldsSortedByPosition indices
-      const destinationItem = filteredItems[destinationIndex];
-      if (!destinationItem) {
-        return;
-      }
-
-      const destinationIndexInSorted = fieldsSortedByPosition.findIndex(
-        (field) => field.id === destinationItem.fieldMetadataItem.id,
-      );
-
-      if (destinationIndexInSorted === -1) {
-        return;
-      }
-
-      // Reorder the fields using moveArrayItem
-      const reorderedFields = moveArrayItem(fieldsSortedByPosition, {
-        fromIndex: sourceIndexInSorted,
-        toIndex: destinationIndexInSorted,
+      const fieldsSortedByPosition = [...nonSystemFields].sort((a, b) => {
+        const positionA = a.settings?.position ?? 0;
+        const positionB = b.settings?.position ?? 0;
+        return positionA - positionB;
       });
 
-      // Update positions: assign sequential positions based on new order
-      const fieldsWithNewPositions = reorderedFields.map((field, index) => ({
-        ...field,
-        settings: {
-          ...field.settings,
-          position: index * 1000,
+      // Get the field IDs from filteredItems in their current order
+      const filteredFieldIds = filteredItems.map(
+        (item) => item.fieldMetadataItem.id,
+      );
+
+      // Reorder the filtered field IDs
+      const reorderedFilteredFieldIds = moveArrayItem(filteredFieldIds, {
+        fromIndex: sourceIndex,
+        toIndex: destinationIndex,
+      });
+
+      // Build the complete reordered list: reordered filtered items first, then others
+      const allFieldIdsInOriginalOrder = fieldsSortedByPosition.map(
+        (field) => field.id,
+      );
+      const filteredIdsSet = new Set(reorderedFilteredFieldIds);
+
+      // Create the new order: reordered filtered items first, then others in their original positions
+      const reorderedAllFieldIds = [
+        ...reorderedFilteredFieldIds,
+        ...allFieldIdsInOriginalOrder.filter((id) => !filteredIdsSet.has(id)),
+      ];
+
+      // Map to fields with new positions
+      const fieldsWithNewPositions = reorderedAllFieldIds.map(
+        (fieldId, index) => {
+          const field = fieldsSortedByPosition.find((f) => f.id === fieldId);
+          if (!field) {
+            const fallbackField = settingsObjectFields.find(
+              (f) => f.id === fieldId,
+            );
+            if (!fallbackField) {
+              throw new Error(`Field ${fieldId} not found`);
+            }
+            return {
+              ...fallbackField,
+              settings: {
+                ...fallbackField.settings,
+                position: index * 1000,
+              },
+            };
+          }
+          return {
+            ...field,
+            settings: {
+              ...field.settings,
+              position: index * 1000,
+            },
+          };
         },
-      }));
+      );
 
       // Optimistic update
       setSettingsObjectFields(fieldsWithNewPositions);
@@ -265,7 +270,7 @@ export const SettingsObjectFieldTable = ({
     },
     [
       filteredItems,
-      fieldsSortedByPosition,
+      settingsObjectFields,
       objectMetadataItem.id,
       updateOneFieldMetadataItem,
       setSettingsObjectFields,
