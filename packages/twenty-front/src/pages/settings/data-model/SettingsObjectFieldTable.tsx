@@ -6,6 +6,8 @@ import {
 } from '@/settings/data-model/object-details/components/SettingsObjectFieldItemTableRow';
 import { settingsObjectFieldsFamilyState } from '@/settings/data-model/object-details/states/settingsObjectFieldsFamilyState';
 import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
+import { DraggableItem } from '@/ui/layout/draggable-list/components/DraggableItem';
+import { DraggableList } from '@/ui/layout/draggable-list/components/DraggableList';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
@@ -15,12 +17,7 @@ import { TableHeader } from '@/ui/layout/table/components/TableHeader';
 import { useSortedArray } from '@/ui/layout/table/hooks/useSortedArray';
 import { type TableMetadata } from '@/ui/layout/table/types/TableMetadata';
 import styled from '@emotion/styled';
-import {
-  DragDropContext,
-  Draggable,
-  Droppable,
-  type DropResult,
-} from '@hello-pangea/dnd';
+import { type DropResult } from '@hello-pangea/dnd';
 import { msg } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react/macro';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -202,7 +199,7 @@ export const SettingsObjectFieldTable = ({
         (item) => item.fieldMetadataItem.id,
       );
 
-      // Reorder the filtered field IDs
+      // Reorder the filtered field IDs (like the select form does)
       const reorderedFilteredFieldIds = moveArrayItem(filteredFieldIds, {
         fromIndex: sourceIndex,
         toIndex: destinationIndex,
@@ -315,57 +312,48 @@ export const SettingsObjectFieldTable = ({
           }
         />
       </StyledSearchAndFilterContainer>
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Table>
-          <StyledObjectFieldTableRow>
-            {tableMetadata.fields.map((item) => (
-              <SortableTableHeader
-                key={item.fieldName}
-                fieldName={item.fieldName}
-                label={t(item.fieldLabel)}
-                tableId={tableMetadata.tableId}
-                initialSort={tableMetadata.initialSort}
-              />
-            ))}
-            <TableHeader></TableHeader>
-          </StyledObjectFieldTableRow>
-          <Droppable droppableId="object-fields-list">
-            {(droppableProvided) => (
-              <div
-                ref={droppableProvided.innerRef}
-                {...droppableProvided.droppableProps}
-              >
-                {filteredItems.map((objectSettingsDetailItem, index) => {
-                  const status = objectSettingsDetailItem.fieldMetadataItem.isActive
-                    ? 'active'
-                    : 'disabled';
+      <Table>
+        <StyledObjectFieldTableRow>
+          {tableMetadata.fields.map((item) => (
+            <SortableTableHeader
+              key={item.fieldName}
+              fieldName={item.fieldName}
+              label={t(item.fieldLabel)}
+              tableId={tableMetadata.tableId}
+              initialSort={tableMetadata.initialSort}
+            />
+          ))}
+          <TableHeader></TableHeader>
+        </StyledObjectFieldTableRow>
+        <DraggableList
+          onDragEnd={!searchTerm ? handleDragEnd : undefined}
+          draggableItems={
+            <>
+              {filteredItems.map((objectSettingsDetailItem, index) => {
+                const status = objectSettingsDetailItem.fieldMetadataItem.isActive
+                  ? 'active'
+                  : 'disabled';
 
-                  return (
-                    <Draggable
-                      key={objectSettingsDetailItem.fieldMetadataItem.id}
-                      draggableId={objectSettingsDetailItem.fieldMetadataItem.id}
-                      index={index}
-                      isDragDisabled={!!searchTerm}
-                    >
-                      {(draggableProvided, draggableSnapshot) => (
-                        <SettingsObjectFieldItemTableRow
-                          key={objectSettingsDetailItem.fieldMetadataItem.id}
-                          settingsObjectDetailTableItem={objectSettingsDetailItem}
-                          status={status}
-                          mode={mode}
-                          draggableProvided={draggableProvided}
-                          draggableSnapshot={draggableSnapshot}
-                        />
-                      )}
-                    </Draggable>
-                  );
-                })}
-                {droppableProvided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        </Table>
-      </DragDropContext>
+                return (
+                  <DraggableItem
+                    draggableId={objectSettingsDetailItem.fieldMetadataItem.id}
+                    index={index}
+                    isDragDisabled={!!searchTerm}
+                    itemComponent={
+                      <SettingsObjectFieldItemTableRow
+                        key={objectSettingsDetailItem.fieldMetadataItem.id}
+                        settingsObjectDetailTableItem={objectSettingsDetailItem}
+                        status={status}
+                        mode={mode}
+                      />
+                    }
+                  />
+                );
+              })}
+            </>
+          }
+        />
+      </Table>
     </>
   );
 };
