@@ -222,7 +222,7 @@ export const SettingsObjectFieldItemTableRow = ({
   return (
     <StyledObjectFieldTableRow
       onClick={
-        mode === 'view'
+        mode === 'view' && !draggableSnapshot?.isDragging
           ? () =>
               navigate(SettingsPath.ObjectFieldEdit, {
                 objectNamePlural: objectMetadataItem.namePlural,
