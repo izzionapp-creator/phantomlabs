@@ -1,27 +1,19 @@
-FROM node:18-alpine AS builder
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Copia todo o monorepo
+# Copia o monorepo inteiro
 COPY . .
 
-# Instala dependências
-RUN yarn install --frozen-lockfile
+# Ativa corepack (yarn moderno)
+RUN corepack enable
 
-# Build apenas do server
-RUN yarn build:server
+# Instala dependências do workspace
+RUN yarn install
 
-
-# ============================
-# Runtime
-# ============================
-FROM node:18-alpine
-
-WORKDIR /app
-ENV NODE_ENV=production
-
-COPY --from=builder /app .
+# Build apenas do twenty-server
+RUN yarn workspace twenty-server build
 
 EXPOSE 3000
 
-CMD ["yarn", "server:prod"]
+CMD ["yarn", "workspace", "twenty-server", "start:prod"]
