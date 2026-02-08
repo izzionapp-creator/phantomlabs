@@ -1,7 +1,12 @@
+# ================================
 # Base image for common dependencies
+# ================================
 FROM node:24-alpine AS common-deps
 
 WORKDIR /app
+
+# Enable corepack for Yarn Berry
+RUN corepack enable
 
 # Copy only the necessary files for dependency resolution
 COPY ./package.json ./yarn.lock ./.yarnrc.yml ./tsconfig.base.json ./nx.json /app/
@@ -16,23 +21,32 @@ COPY ./packages/twenty-shared/package.json /app/packages/twenty-shared/
 COPY ./packages/twenty-front/package.json /app/packages/twenty-front/
 COPY ./packages/twenty-sdk/package.json /app/packages/twenty-sdk/
 
-# Install all dependencies
-RUN yarn && yarn cache clean && npx nx reset
+# Install all dependencies (monorepo)
+RUN yarn \
+ && yarn cache clean \
+ && npx nx reset
 
 
-# Build the back
+# ================================
+# Build the backend (twenty-server)
+# ================================
 FROM common-deps AS twenty-server-build
 
-# Copy sourcecode after installing dependences to accelerate subsequents builds
+# Copy source code after dependencies to leverage cache
 COPY ./packages/twenty-emails /app/packages/twenty-emails
 COPY ./packages/twenty-shared /app/packages/twenty-shared
 COPY ./packages/twenty-server /app/packages/twenty-server
 
+# Build backend
 RUN npx nx run twenty-server:build
 
+# Keep only production deps for runtime
 RUN yarn workspaces focus --production twenty-emails twenty-shared twenty-server
 
-# Build the front
+
+# ================================
+# Build the frontend (twenty-front)
+# ================================
 FROM common-deps AS twenty-front-build
 
 ARG REACT_APP_SERVER_BASE_URL
@@ -41,21 +55,25 @@ COPY ./packages/twenty-front /app/packages/twenty-front
 COPY ./packages/twenty-ui /app/packages/twenty-ui
 COPY ./packages/twenty-shared /app/packages/twenty-shared
 COPY ./packages/twenty-sdk /app/packages/twenty-sdk
+
 RUN npx nx build twenty-front
 
 
-# Final stage: Run the application
+# ================================
+# Final runtime image
+# ================================
 FROM node:24-alpine AS twenty
 
-# Used to run healthcheck in docker
-RUN apk add --no-cache curl jq
+# System dependencies
+RUN apk add --no-cache curl jq postgresql-client
 
+# Runtime tools
 RUN npm install -g tsx
 
-RUN apk add --no-cache postgresql-client
-
+# Entrypoint
 COPY ./packages/twenty-docker/twenty/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
+
 WORKDIR /app/packages/twenty-server
 
 ARG REACT_APP_SERVER_BASE_URL
@@ -64,20 +82,20 @@ ENV REACT_APP_SERVER_BASE_URL=$REACT_APP_SERVER_BASE_URL
 ARG APP_VERSION
 ENV APP_VERSION=$APP_VERSION
 
-# Copy built applications from previous stages
+# Copy built artifacts
 COPY --chown=1000 --from=twenty-server-build /app /app
-COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-server /app/packages/twenty-server
 COPY --chown=1000 --from=twenty-front-build /app/packages/twenty-front/build /app/packages/twenty-server/dist/front
 
-# Set metadata and labels
+# Image metadata
 LABEL org.opencontainers.image.source=https://github.com/twentyhq/twenty
-LABEL org.opencontainers.image.description="This image provides a consistent and reproducible environment for the backend and frontend, ensuring it deploys faster and runs the same way regardless of the deployment environment."
+LABEL org.opencontainers.image.description="Backend + Frontend image for Twenty, built from monorepo using Nx and Yarn workspaces."
 
-RUN mkdir -p /app/.local-storage /app/packages/twenty-server/.local-storage && \
-    chown -R 1000:1000 /app
+# Prepare storage and permissions
+RUN mkdir -p /app/.local-storage /app/packages/twenty-server/.local-storage \
+ && chown -R 1000:1000 /app
 
-# Use non root user with uid 1000
+# Run as non-root user
 USER 1000
 
-CMD ["node", "dist/main"]
 ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["node", "dist/main"]
