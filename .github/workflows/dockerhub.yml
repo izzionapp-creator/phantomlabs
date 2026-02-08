@@ -23,12 +23,16 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Extract tag version
+        id: vars
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: packages/twenty-docker/twenty/Dockerfile
+          file: ./packages/twenty-server/Dockerfile
           push: true
           tags: |
-            phantomlabs/twentycrm:${{ github.ref_name }}
-            phantomlabs/twentycrm:latest
+            izzidocker/phantomlabs:${{ steps.vars.outputs.VERSION }}
+            izzidocker/phantomlabs:latest
