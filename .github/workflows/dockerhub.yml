@@ -1,6 +1,7 @@
 name: Build & Push TwentyCRM Image
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "v*"
