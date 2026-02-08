@@ -1,23 +1,23 @@
 import {
-  FieldMetadataDefaultValue,
-  FieldMetadataOptions,
-  FieldMetadataSettings,
-  FieldMetadataType,
+    FieldMetadataDefaultValue,
+    FieldMetadataOptions,
+    FieldMetadataSettings,
+    FieldMetadataType,
 } from 'twenty-shared/types';
 import {
-  Check,
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  OneToOne,
-  PrimaryGeneratedColumn,
-  Relation,
-  Unique,
-  UpdateDateColumn,
+    Check,
+    Column,
+    CreateDateColumn,
+    Entity,
+    Index,
+    JoinColumn,
+    ManyToOne,
+    OneToMany,
+    OneToOne,
+    PrimaryGeneratedColumn,
+    Relation,
+    Unique,
+    UpdateDateColumn,
 } from 'typeorm';
 
 import { type FieldStandardOverridesDTO } from 'src/engine/metadata-modules/field-metadata/dtos/field-standard-overrides.dto';
@@ -86,6 +86,9 @@ export class FieldMetadataEntity<
 
   @Column({ nullable: false })
   label: string;
+
+  @Column({ default: 0 })
+  position: number;
 
   @Column({ nullable: true, type: 'jsonb' })
   defaultValue: JsonbProperty<FieldMetadataDefaultValue<TFieldMetadataType>>;

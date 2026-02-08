@@ -1,10 +1,13 @@
+import { useUpdateOneFieldMetadataItem } from '@/object-metadata/hooks/useUpdateOneFieldMetadataItem';
 import { type ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import {
-  SettingsObjectFieldItemTableRow,
-  StyledObjectFieldTableRow,
+    SettingsObjectFieldItemTableRow,
+    StyledObjectFieldTableRow,
 } from '@/settings/data-model/object-details/components/SettingsObjectFieldItemTableRow';
 import { settingsObjectFieldsFamilyState } from '@/settings/data-model/object-details/states/settingsObjectFieldsFamilyState';
 import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
+import { DraggableItem } from '@/ui/layout/draggable-list/components/DraggableItem';
+import { DraggableList } from '@/ui/layout/draggable-list/components/DraggableList';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
@@ -15,21 +18,23 @@ import { useSortedArray } from '@/ui/layout/table/hooks/useSortedArray';
 import { type TableMetadata } from '@/ui/layout/table/types/TableMetadata';
 import { isAdvancedModeEnabledState } from '@/ui/navigation/navigation-drawer/states/isAdvancedModeEnabledState';
 import styled from '@emotion/styled';
+import { type DropResult } from '@hello-pangea/dnd';
 import { msg } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react/macro';
 import { useEffect, useMemo, useState } from 'react';
 import { useRecoilState, useRecoilValue } from 'recoil';
 import { FieldMetadataType } from 'twenty-shared/types';
 import {
-  IconArchive,
-  IconFilter,
-  IconSearch,
-  IconSettings,
+    IconArchive,
+    IconFilter,
+    IconSearch,
+    IconSettings,
 } from 'twenty-ui/display';
 import { Button } from 'twenty-ui/input';
 import { MenuItemToggle } from 'twenty-ui/navigation';
 import { useMapFieldMetadataItemToSettingsObjectDetailTableItem } from '~/pages/settings/data-model/hooks/useMapFieldMetadataItemToSettingsObjectDetailTableItem';
 import { type SettingsObjectDetailTableItem } from '~/pages/settings/data-model/types/SettingsObjectDetailTableItem';
+import { moveArrayItem } from '~/utils/array/moveArrayItem';
 import { normalizeSearchText } from '~/utils/normalizeSearchText';
 
 const StyledSearchAndFilterContainer = styled.div`
@@ -47,6 +52,12 @@ const SETTINGS_OBJECT_FIELD_TABLE_METADATA: TableMetadata<SettingsObjectDetailTa
   {
     tableId: 'settingsObjectDetail',
     fields: [
+      {
+        fieldLabel: msg``,
+        fieldName: 'position',
+        fieldType: 'number',
+        align: 'left',
+      },
       {
         fieldLabel: msg`Name`,
         fieldName: 'label',
@@ -67,7 +78,7 @@ const SETTINGS_OBJECT_FIELD_TABLE_METADATA: TableMetadata<SettingsObjectDetailTa
       },
     ],
     initialSort: {
-      fieldName: 'label',
+      fieldName: 'position',
       orderBy: 'AscNullsLast',
     },
   };
@@ -153,6 +164,53 @@ export const SettingsObjectFieldTable = ({
     });
   }, [sortedAllObjectSettingsDetailItems, searchTerm, showInactive]);
 
+  const { updateOneFieldMetadataItem } = useUpdateOneFieldMetadataItem();
+
+  const handleDragEnd = async (result: DropResult) => {
+    if (!result.destination) {
+      return;
+    }
+
+    if (result.destination.index === result.source.index) {
+      return;
+    }
+
+    const reorderedItems = moveArrayItem(filteredItems, {
+      fromIndex: result.source.index,
+      toIndex: result.destination.index,
+    });
+
+    const fieldsWithNewPosition = reorderedItems.map((item, index) => ({
+      ...item,
+      position: index,
+    }));
+
+    // Optimistically update the UI
+    // Note: Since settingsObjectFields is the source of truth, we should ideally update it.
+    // But calculating the new settingsObjectFields from filteredItems is complex if filtered.
+    // For now, we rely on the mutation triggering a refresh.
+    // If it's too slow, we can update local state.
+
+    // Update positions in backend
+    // We only update items that have a different position than their index
+    const updatePromises = fieldsWithNewPosition.map(async (item, index) => {
+       if (item.fieldMetadataItem.position !== index) {
+         await updateOneFieldMetadataItem({
+           objectMetadataId: objectMetadataItem.id,
+           fieldMetadataIdToUpdate: item.fieldMetadataItem.id,
+           updatePayload: {
+             position: index,
+           },
+         });
+       }
+    });
+
+    await Promise.all(updatePromises);
+  };
+
+  const isDragDisabled =
+    !!searchTerm || !showSystemFields || !showInactive;
+
   return (
     <>
       <StyledSearchAndFilterContainer>
@@ -215,20 +273,34 @@ export const SettingsObjectFieldTable = ({
           ))}
           <TableHeader></TableHeader>
         </StyledObjectFieldTableRow>
-        {filteredItems.map((objectSettingsDetailItem) => {
-          const status = objectSettingsDetailItem.fieldMetadataItem.isActive
-            ? 'active'
-            : 'disabled';
+        <DraggableList
+          onDragEnd={handleDragEnd}
+          draggableItems={
+            <>
+              {filteredItems.map((objectSettingsDetailItem, index) => {
+                const status = objectSettingsDetailItem.fieldMetadataItem.isActive
+                  ? 'active'
+                  : 'disabled';
 
-          return (
-            <SettingsObjectFieldItemTableRow
-              key={objectSettingsDetailItem.fieldMetadataItem.id}
-              settingsObjectDetailTableItem={objectSettingsDetailItem}
-              status={status}
-              mode={mode}
-            />
-          );
-        })}
+                return (
+                  <DraggableItem
+                    key={objectSettingsDetailItem.fieldMetadataItem.id}
+                    draggableId={objectSettingsDetailItem.fieldMetadataItem.id}
+                    index={index}
+                    isDragDisabled={isDragDisabled}
+                    itemComponent={
+                      <SettingsObjectFieldItemTableRow
+                        settingsObjectDetailTableItem={objectSettingsDetailItem}
+                        status={status}
+                        mode={mode}
+                      />
+                    }
+                  />
+                );
+              })}
+            </>
+          }
+        />
       </Table>
     </>
   );

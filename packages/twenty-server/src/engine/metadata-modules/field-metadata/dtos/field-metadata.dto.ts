@@ -1,33 +1,34 @@
 import {
-  Field,
-  HideField,
-  ObjectType,
-  registerEnumType,
+    Field,
+    HideField,
+    ObjectType,
+    registerEnumType,
 } from '@nestjs/graphql';
 
 import {
-  Authorize,
-  FilterableField,
-  IDField,
-  QueryOptions,
-  Relation,
+    Authorize,
+    FilterableField,
+    IDField,
+    QueryOptions,
+    Relation,
 } from '@ptc-org/nestjs-query-graphql';
 import { Transform } from 'class-transformer';
 import {
-  IsBoolean,
-  IsDateString,
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  IsUUID,
+    IsBoolean,
+    IsDateString,
+    IsEnum,
+    IsNotEmpty,
+    IsNumber,
+    IsOptional,
+    IsString,
+    IsUUID,
 } from 'class-validator';
 import { GraphQLJSON } from 'graphql-type-json';
 import {
-  type FieldMetadataOptions,
-  type FieldMetadataSettings,
-  FieldMetadataType,
-  type FieldMetadataDefaultValue,
+    FieldMetadataType,
+    type FieldMetadataDefaultValue,
+    type FieldMetadataOptions,
+    type FieldMetadataSettings,
 } from 'twenty-shared/types';
 
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
@@ -77,8 +78,15 @@ export class FieldMetadataDTO<T extends FieldMetadataType = FieldMetadataType> {
 
   @IsString()
   @IsNotEmpty()
+  @IsString()
+  @IsNotEmpty()
   @Field()
   label: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  @Field(() => Number)
+  position: number;
 
   @IsString()
   @IsOptional()

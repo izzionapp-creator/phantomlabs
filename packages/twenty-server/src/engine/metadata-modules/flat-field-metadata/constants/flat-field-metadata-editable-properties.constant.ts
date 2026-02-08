@@ -12,6 +12,7 @@ export const FLAT_FIELD_METADATA_EDITABLE_PROPERTIES = {
     'name',
     'options',
     'settings',
+    'position',
   ],
   standard: [
     'defaultValue',
@@ -22,5 +23,6 @@ export const FLAT_FIELD_METADATA_EDITABLE_PROPERTIES = {
     'options',
     'settings',
     'isUnique',
+    'position',
   ],
 } as const satisfies Record<'standard' | 'custom', (keyof FlatFieldMetadata)[]>;

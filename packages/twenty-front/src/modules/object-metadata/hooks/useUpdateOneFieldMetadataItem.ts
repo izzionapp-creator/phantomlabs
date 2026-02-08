@@ -1,6 +1,6 @@
 import {
-  type UpdateOneFieldMetadataItemMutationVariables,
-  useUpdateOneFieldMetadataItemMutation,
+    type UpdateOneFieldMetadataItemMutationVariables,
+    useUpdateOneFieldMetadataItemMutation,
 } from '~/generated-metadata/graphql';
 
 import { useMetadataErrorHandler } from '@/metadata-error-handler/hooks/useMetadataErrorHandler';
@@ -50,7 +50,7 @@ export const useUpdateOneFieldMetadataItem = () => {
       | 'defaultValue'
       | 'options'
       | 'isLabelSyncedWithName'
-    >;
+    > & { position?: number };
   }): Promise<
     MetadataRequestResult<
       Awaited<ReturnType<typeof updateOneFieldMetadataItemMutation>>

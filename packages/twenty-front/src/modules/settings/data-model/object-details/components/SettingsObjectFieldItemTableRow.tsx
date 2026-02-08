@@ -18,10 +18,11 @@ import { useRecoilState } from 'recoil';
 import { FieldMetadataType, SettingsPath } from 'twenty-shared/types';
 import { getSettingsPath, isDefined } from 'twenty-shared/utils';
 import {
-  IconChevronRight,
-  IconMinus,
-  IconPlus,
-  useIcons,
+    IconChevronRight,
+    IconGripVertical,
+    IconMinus,
+    IconPlus,
+    useIcons,
 } from 'twenty-ui/display';
 import { LightIconButton } from 'twenty-ui/input';
 import { UndecoratedLink } from 'twenty-ui/navigation';
@@ -37,7 +38,7 @@ type SettingsObjectFieldItemTableRowProps = {
 };
 
 export const StyledObjectFieldTableRow = styled(TableRow)`
-  grid-template-columns: minmax(0, 1fr) 148px 148px 36px;
+  grid-template-columns: 32px minmax(0, 1fr) 148px 148px 36px;
 `;
 
 const StyledNameTableCell = styled(TableCell)`
@@ -72,6 +73,13 @@ const StyledInactiveLabel = styled.span`
     content: '·';
     margin-right: ${({ theme }) => theme.spacing(1)};
   }
+`;
+
+const StyledDragHandleTableCell = styled(TableCell)`
+  justify-content: center;
+  padding-right: ${({ theme }) => theme.spacing(1)};
+  cursor: grab;
+  color: ${({ theme }) => theme.font.color.light};
 `;
 
 const StyledIconTableCell = styled(TableCell)`
@@ -181,6 +189,13 @@ export const SettingsObjectFieldItemTableRow = ({
     <StyledObjectFieldTableRow
       onClick={mode === 'view' ? navigateToFieldEdit : undefined}
     >
+      <StyledDragHandleTableCell>
+        <IconGripVertical
+          size={theme.icon.size.md}
+          stroke={theme.icon.stroke.sm}
+          color={theme.font.color.light}
+        />
+      </StyledDragHandleTableCell>
       <UndecoratedLink to={linkToNavigate}>
         <StyledNameTableCell>
           {!!Icon && (

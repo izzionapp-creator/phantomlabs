@@ -1,12 +1,12 @@
 import { type FieldMetadataItemRelation } from '@/object-metadata/types/FieldMetadataItemRelation';
 import {
-  type FieldDateMetadataSettings,
-  type FieldRelationMetadataSettings,
+    type FieldDateMetadataSettings,
+    type FieldRelationMetadataSettings,
 } from '@/object-record/record-field/ui/types/FieldMetadata';
 
 import {
-  type FieldMetadataMultiItemSettings,
-  type PartialFieldMetadataItemOption,
+    type FieldMetadataMultiItemSettings,
+    type PartialFieldMetadataItemOption,
 } from 'twenty-shared/types';
 import { type ThemeColor } from 'twenty-ui/theme';
 import { type Field } from '~/generated-metadata/graphql';
@@ -37,4 +37,5 @@ export type FieldMetadataItem = Omit<
     | null;
   isLabelSyncedWithName?: boolean | null;
   morphId?: string | null;
+  position: number;
 };

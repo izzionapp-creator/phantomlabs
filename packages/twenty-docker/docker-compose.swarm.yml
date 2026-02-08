@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  server:
+    image: twenty:latest
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_PORT: 3000
+      PG_DATABASE_URL: postgres://postgres:postgres@db:5432/default
+      SERVER_URL: http://localhost:3000
+      REDIS_URL: redis://redis:6379
+      DISABLE_DB_MIGRATIONS: "false"
+      DISABLE_CRON_JOBS_REGISTRATION: "false"
+      STORAGE_TYPE: local
+      APP_SECRET: replace_me_with_a_random_string
+      # Add other necessary variables here with defaults
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    depends_on:
+      - db
+      - redis
+    networks:
+      - twenty-network
+    volumes:
+      - server-local-data:/app/packages/twenty-server/.local-storage
+
+  worker:
+    image: twenty:latest
+    command: ["yarn", "worker:prod"]
+    environment:
+      PG_DATABASE_URL: postgres://postgres:postgres@db:5432/default
+      SERVER_URL: http://localhost:3000
+      REDIS_URL: redis://redis:6379
+      DISABLE_DB_MIGRATIONS: "true"
+      DISABLE_CRON_JOBS_REGISTRATION: "true"
+      STORAGE_TYPE: local
+      APP_SECRET: replace_me_with_a_random_string
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    depends_on:
+      - db
+      - server
+    networks:
+      - twenty-network
+    volumes:
+      - server-local-data:/app/packages/twenty-server/.local-storage
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: default
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    deploy:
+      replicas: 1
+    networks:
+      - twenty-network
+
+  redis:
+    image: redis
+    command: ["--maxmemory-policy", "noeviction"]
+    deploy:
+      replicas: 1
+    networks:
+      - twenty-network
+
+networks:
+  twenty-network:
+    driver: overlay
+
+volumes:
+  db-data:
+  server-local-data:
