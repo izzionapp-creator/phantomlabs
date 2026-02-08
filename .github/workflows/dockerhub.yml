@@ -1,4 +1,4 @@
-name: Build & Push TwentyCRM Image
+name: Build & Push Twenty Image
 
 on:
   workflow_dispatch:
@@ -31,8 +31,10 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./packages/twenty-server/Dockerfile
+          file: packages/twenty-docker/twenty/Dockerfile
           push: true
           tags: |
             izzidocker/phantomlabs:${{ steps.vars.outputs.VERSION }}
             izzidocker/phantomlabs:latest
+          build-args: |
+            APP_VERSION=${{ steps.vars.outputs.VERSION }}
